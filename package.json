@@ -1,0 +1,61 @@
+{
+  "name": "claude-usage-bar",
+  "version": "1.0.0",
+  "description": "Muestra el porcentaje de uso de tu plan de Claude en la barra de menú (macOS) y en la bandeja del sistema (Windows).",
+  "main": "main.js",
+  "author": "RagnArTheVikings",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "gen-icon": "node scripts/gen-icon.js",
+    "check-usage": "node scripts/check-usage.js",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.ragnarthevikings.claude-usage-bar",
+    "productName": "Claude Usage",
+    "files": [
+      "main.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": true,
+      "runAfterFinish": true
+    },
+    "publish": {
+      "provider": "github"
+    }
+  }
+}
