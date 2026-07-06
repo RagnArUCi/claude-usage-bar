@@ -5,6 +5,7 @@
   "main": "main.js",
   "author": "RagnArTheVikings",
   "license": "MIT",
+  "repository": "github:RagnArUCi/claude-usage-bar",
   "scripts": {
     "start": "electron .",
     "gen-icon": "node scripts/gen-icon.js",
