@@ -14,7 +14,7 @@ const RAYS = 12;
 function drawSunburst(rgba, width, height, opts) {
   const { cx, cy, radius, color } = opts;
   const [cr, cg, cb] = color;
-  const inner = radius * 0.16;
+  const inner = radius * 0.02; // los rayos convergen en un núcleo sólido
   const half = radius * 0.085; // semiancho de cada rayo
   const SS = 3; // supermuestreo 3x3
 
@@ -69,13 +69,11 @@ function drawSunburst(rgba, width, height, opts) {
       if (!hit) continue;
       const cov = hit / (SS * SS);
       const idx = (y * width + x) * 4;
-      const a = Math.round(cov * 255);
-      if (a > rgba[idx + 3]) {
-        rgba[idx] = cr;
-        rgba[idx + 1] = cg;
-        rgba[idx + 2] = cb;
-        rgba[idx + 3] = a;
-      }
+      // Mezcla alfa sobre lo que ya haya (fondo opaco o transparente)
+      rgba[idx] = Math.round(cr * cov + rgba[idx] * (1 - cov));
+      rgba[idx + 1] = Math.round(cg * cov + rgba[idx + 1] * (1 - cov));
+      rgba[idx + 2] = Math.round(cb * cov + rgba[idx + 2] * (1 - cov));
+      rgba[idx + 3] = Math.max(rgba[idx + 3], Math.round(cov * 255));
     }
   }
 }
