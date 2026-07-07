@@ -10,6 +10,7 @@
     "start": "electron .",
     "gen-icon": "node scripts/gen-icon.js",
     "check-usage": "node scripts/check-usage.js",
+    "test": "node --test \"test/**/*.test.js\"",
     "dist": "electron-builder"
   },
   "devDependencies": {

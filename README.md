@@ -7,6 +7,8 @@ Muestra en tiempo real el porcentaje de uso de tu plan de Claude:
 
 El porcentaje mostrado es el de la **sesión actual (ventana de 5 horas)**. Haciendo clic en el icono ves también el uso semanal, el semanal de Opus y cuándo se reinicia cada límite.
 
+La app instalada se configura sola para **iniciarse al encender el equipo** (Windows y macOS) la primera vez que la abres. Se puede desactivar cuando quieras desde el menú del icono → "Iniciar al encender el equipo".
+
 ## Descarga
 
 Ve a [Releases](../../releases) y descarga:

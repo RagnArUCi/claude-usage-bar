@@ -6,6 +6,7 @@
 const { app, Tray, Menu } = require('electron');
 const { fetchUsage } = require('./src/usage');
 const { macTemplateIcon, winPercentIcon } = require('./src/trayIcon');
+const { ensureAutoLaunch, setAutoLaunch } = require('./src/autoLaunch');
 
 const POLL_MS = 60 * 1000;
 const IS_MAC = process.platform === 'darwin';
@@ -46,10 +47,14 @@ function buildMenu(lines) {
     { type: 'separator' },
     { label: 'Actualizar ahora', click: () => refresh() },
     {
-      label: 'Iniciar al encender el equipo',
+      // En dev registraría electron.exe en vez de la app instalada.
+      label: app.isPackaged
+        ? 'Iniciar al encender el equipo'
+        : 'Iniciar al encender el equipo (solo app instalada)',
       type: 'checkbox',
+      enabled: app.isPackaged,
       checked: app.getLoginItemSettings().openAtLogin,
-      click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
+      click: (item) => setAutoLaunch(app, item.checked),
     },
     { type: 'separator' },
     { label: `Claude Usage v${app.getVersion()}`, enabled: false },
@@ -98,6 +103,7 @@ if (!gotLock) {
 } else {
   app.whenReady().then(() => {
     if (IS_MAC && app.dock) app.dock.hide();
+    ensureAutoLaunch(app);
 
     tray = new Tray(IS_MAC ? macTemplateIcon() : winPercentIcon('-'));
     tray.setToolTip('Claude Usage — cargando…');
