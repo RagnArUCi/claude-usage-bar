@@ -7,6 +7,8 @@ Muestra en tiempo real el porcentaje de uso de tu plan de Claude:
 
 Al hacer clic se abre un panel con un medidor por cada límite, la tendencia de la sesión y una proyección de cuándo se te agota al ritmo actual.
 
+La app instalada se configura sola para **iniciarse al encender el equipo** (Windows y macOS) la primera vez que la abres. Se puede desactivar cuando quieras desde el menú del icono → "Iniciar al encender el equipo".
+
 ## Descarga
 
 Ve a [Releases](../../releases) y descarga:

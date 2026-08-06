@@ -260,6 +260,11 @@ function render(payload) {
   }
   $('notify').checked = !!settings.notifyThresholds;
   $('login').checked = !!loginItem;
+  $('login').disabled = payload.canAutoLaunch === false;
+  $('loginLabel').textContent =
+    payload.canAutoLaunch === false
+      ? 'Iniciar al encender (solo app instalada)'
+      : 'Iniciar al encender el equipo';
 
   reportHeight();
 }

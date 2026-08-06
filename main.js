@@ -23,6 +23,7 @@ const store = require('./src/store');
 const { palette } = require('./src/color');
 const { forecast, sparkline } = require('./src/forecast');
 const { macTemplateIcon, winPercentIcon } = require('./src/trayIcon');
+const { ensureAutoLaunch, setAutoLaunch } = require('./src/autoLaunch');
 
 const IS_MAC = process.platform === 'darwin';
 const PANEL_WIDTH = 300;
@@ -63,6 +64,8 @@ function buildPayload() {
     },
     settings,
     loginItem: app.getLoginItemSettings().openAtLogin,
+    // En desarrollo se registraría electron en vez de la app instalada.
+    canAutoLaunch: app.isPackaged,
     primaryKind: primary ? primary.kind : null,
     palette: {
       accent: nativeTheme.shouldUseDarkColors ? pal.accentDark : pal.accentLight,
@@ -105,11 +108,15 @@ function contextMenu() {
     { label: 'Actualizar ahora', click: () => poller.refresh({ manual: true }) },
     { type: 'separator' },
     {
-      label: 'Iniciar al encender el equipo',
+      // En dev registraría electron.exe en vez de la app instalada.
+      label: app.isPackaged
+        ? 'Iniciar al encender el equipo'
+        : 'Iniciar al encender el equipo (solo app instalada)',
       type: 'checkbox',
+      enabled: app.isPackaged,
       checked: app.getLoginItemSettings().openAtLogin,
       click: (item) => {
-        app.setLoginItemSettings({ openAtLogin: item.checked });
+        setAutoLaunch(app, item.checked);
         push();
       },
     },
@@ -255,6 +262,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     if (IS_MAC && app.dock) app.dock.hide();
+    ensureAutoLaunch(app);
 
     tray = new Tray(IS_MAC ? macTemplateIcon() : winPercentIcon('-', null));
     tray.setToolTip('Claude Usage — cargando…');
@@ -292,7 +300,7 @@ if (!app.requestSingleInstanceLock()) {
       push();
     });
     ipcMain.on('set-login-item', (_e, enabled) => {
-      app.setLoginItemSettings({ openAtLogin: !!enabled });
+      setAutoLaunch(app, !!enabled);
       push();
     });
     ipcMain.on('resize', (_e, height) => {
