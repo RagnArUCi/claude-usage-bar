@@ -1,113 +1,309 @@
-// Claude Usage — app de bandeja del sistema, sin ventanas.
+// Claude Usage — app de bandeja del sistema, sin ventanas de escritorio.
 // macOS: logo de Claude + "42%" en la barra de menú superior.
-// Windows: icono con el número dentro, junto al reloj/batería.
+// Windows: icono con el número dentro, junto al reloj.
+// Al hacer clic se abre un panel con los medidores de cada límite.
 'use strict';
 
-const { app, Tray, Menu } = require('electron');
-const { fetchUsage } = require('./src/usage');
+const path = require('path');
+const {
+  app,
+  Tray,
+  Menu,
+  BrowserWindow,
+  ipcMain,
+  screen,
+  nativeTheme,
+  systemPreferences,
+  powerMonitor,
+  Notification,
+} = require('electron');
+
+const { Poller } = require('./src/poller');
+const store = require('./src/store');
+const { palette } = require('./src/color');
+const { forecast, sparkline } = require('./src/forecast');
 const { macTemplateIcon, winPercentIcon } = require('./src/trayIcon');
 
-const POLL_MS = 60 * 1000;
 const IS_MAC = process.platform === 'darwin';
+const PANEL_WIDTH = 300;
+const PANEL_MARGIN = 8;
 
 let tray = null;
-let timer = null;
+let panel = null;
+let poller = null;
 
-const ERROR_MESSAGES = {
-  'no-credentials':
-    'No encontré credenciales de Claude Code. Abre Claude Code e inicia sesión.',
-  expired:
-    'La sesión de Claude Code expiró. Abre Claude Code para renovarla.',
-  network: 'Sin conexión con api.anthropic.com.',
-  parse: 'Respuesta inesperada de la API.',
-  formato: 'La API devolvió un formato desconocido.',
-};
+/* ---------- Datos para la interfaz ---------- */
 
-function fmtReset(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const sameDay = d.toDateString() === new Date().toDateString();
-  const hm = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (sameDay) return hm;
-  const day = d.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
-  return `${day} ${hm}`;
+/** El límite que manda: el elegido en ajustes o, en automático, el más alto. */
+function resolvePrimary(limits, setting) {
+  if (!limits.length) return null;
+  if (setting && setting !== 'auto') {
+    const found = limits.find((l) => l.kind === setting);
+    if (found) return found;
+  }
+  return limits.reduce((a, b) => (b.pct > a.pct ? b : a), limits[0]);
 }
 
-function statLine(label, stat) {
-  if (!stat) return null;
-  const reset = fmtReset(stat.resetsAt);
-  return `${label}: ${stat.pct}%${reset ? ` · se reinicia ${reset}` : ''}`;
+function buildPayload() {
+  const state = poller.state();
+  const settings = store.getSettings();
+  const limits = state.limits.map((l) => ({ ...l, fc: forecast(l, state.history) }));
+  const primary = resolvePrimary(limits, settings.barMetric);
+  const pal = palette();
+
+  return {
+    state: {
+      status: state.status,
+      error: state.error,
+      needsLogin: state.needsLogin,
+      fetchedAt: state.fetchedAt,
+      ageMs: state.ageMs,
+      limits,
+      spark: primary ? sparkline(state.history, primary.kind) : [],
+    },
+    settings,
+    loginItem: app.getLoginItemSettings().openAtLogin,
+    primaryKind: primary ? primary.kind : null,
+    palette: {
+      accent: nativeTheme.shouldUseDarkColors ? pal.accentDark : pal.accentLight,
+      severity: pal.severity,
+    },
+    vibrant: IS_MAC,
+  };
 }
 
-function buildMenu(lines) {
-  const template = [
-    ...lines.map((label) => ({ label, enabled: false })),
+function push() {
+  if (panel && !panel.isDestroyed()) {
+    panel.webContents.send('payload', buildPayload());
+  }
+}
+
+/* ---------- Bandeja ---------- */
+
+function updateTray(payload) {
+  const { state, primaryKind } = payload;
+  const primary = state.limits.find((l) => l.kind === primaryKind) || null;
+  const pct = primary ? primary.pct : null;
+  const sevColor = primary ? payload.palette.severity[primary.severity] : null;
+
+  if (IS_MAC) {
+    tray.setTitle(pct === null ? ' -' : ` ${pct}%`);
+  } else {
+    tray.setImage(winPercentIcon(pct === null ? '-' : String(pct), sevColor));
+  }
+
+  const parts = state.limits.map((l) => `${l.label} ${l.pct} %`);
+  let tip = parts.length ? `Claude · ${parts.join(' · ')}` : 'Claude · sin datos todavía';
+  if (state.needsLogin) tip += ' · sesión caducada';
+  else if (state.status === 'stale') tip += ' · dato no reciente';
+  tray.setToolTip(tip);
+}
+
+function contextMenu() {
+  return Menu.buildFromTemplate([
+    { label: 'Abrir panel', click: () => showPanel() },
+    { label: 'Actualizar ahora', click: () => poller.refresh({ manual: true }) },
     { type: 'separator' },
-    { label: 'Actualizar ahora', click: () => refresh() },
     {
       label: 'Iniciar al encender el equipo',
       type: 'checkbox',
       checked: app.getLoginItemSettings().openAtLogin,
-      click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
+      click: (item) => {
+        app.setLoginItemSettings({ openAtLogin: item.checked });
+        push();
+      },
     },
     { type: 'separator' },
     { label: `Claude Usage v${app.getVersion()}`, enabled: false },
     { label: 'Salir', role: 'quit' },
-  ];
-  return Menu.buildFromTemplate(template);
+  ]);
 }
 
-function showError(code) {
-  const msg = ERROR_MESSAGES[code] || `Error: ${code}`;
-  if (IS_MAC) tray.setTitle(' –');
-  else tray.setImage(winPercentIcon('!'));
-  tray.setToolTip(`Claude Usage — ${msg}`);
-  tray.setContextMenu(buildMenu([msg]));
+/* ---------- Panel ---------- */
+
+function createPanel() {
+  panel = new BrowserWindow({
+    width: PANEL_WIDTH,
+    height: 420,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    ...(IS_MAC
+      ? { vibrancy: 'popover', visualEffectState: 'active', roundedCorners: true }
+      : {}),
+    webPreferences: {
+      preload: path.join(__dirname, 'src', 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+
+  panel.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  panel.loadFile(path.join(__dirname, 'src', 'panel', 'index.html'));
+  panel.on('blur', () => {
+    if (!panel.webContents.isDevToolsOpened()) hidePanel();
+  });
 }
 
-function showUsage(u) {
-  const pct = u.session ? u.session.pct : u.weekly.pct;
-  if (IS_MAC) tray.setTitle(` ${pct}%`);
-  else tray.setImage(winPercentIcon(String(pct), pct));
+function positionPanel() {
+  const trayBounds = tray.getBounds();
+  const { width, height } = panel.getBounds();
+  const anchor = trayBounds.width
+    ? { x: trayBounds.x + trayBounds.width / 2, y: trayBounds.y }
+    : screen.getCursorScreenPoint();
+  const area = screen.getDisplayNearestPoint(anchor).workArea;
 
-  const lines = [
-    statLine('Sesión actual (5 h)', u.session),
-    statLine('Semana (todos los modelos)', u.weekly),
-    statLine('Semana (Opus)', u.opus),
-  ].filter(Boolean);
+  let x = Math.round(anchor.x - width / 2);
+  let y;
+  if (IS_MAC) {
+    y = Math.round(trayBounds.y + trayBounds.height + 6);
+  } else {
+    // En Windows la bandeja suele estar abajo a la derecha, pero la barra de
+    // tareas puede estar en cualquier borde: se ancla al área de trabajo.
+    const trayAtTop = trayBounds.height && trayBounds.y < area.y + area.height / 2;
+    y = trayAtTop
+      ? Math.round(area.y + PANEL_MARGIN)
+      : Math.round(area.y + area.height - height - PANEL_MARGIN);
+    if (!trayBounds.width) x = Math.round(area.x + area.width - width - PANEL_MARGIN);
+  }
 
-  tray.setToolTip(`Claude: ${pct}% usado`);
-  tray.setContextMenu(buildMenu(lines));
+  x = Math.max(area.x + PANEL_MARGIN, Math.min(x, area.x + area.width - width - PANEL_MARGIN));
+  y = Math.max(area.y + PANEL_MARGIN, y);
+  panel.setPosition(x, y, false);
 }
 
-async function refresh() {
-  try {
-    const u = await fetchUsage();
-    if (!tray) return;
-    if (u.error) showError(u.error);
-    else showUsage(u);
-  } catch (err) {
-    if (tray) showError('parse');
+function showPanel() {
+  if (!panel || panel.isDestroyed()) return;
+  positionPanel();
+  panel.show();
+  panel.focus();
+  poller.setPanelOpen(true);
+}
+
+function hidePanel() {
+  if (!panel || panel.isDestroyed() || !panel.isVisible()) return;
+  panel.hide();
+  poller.setPanelOpen(false);
+}
+
+function togglePanel() {
+  if (panel && panel.isVisible()) hidePanel();
+  else showPanel();
+}
+
+/* ---------- Avisos ---------- */
+
+function resetPhrase(iso) {
+  if (!iso) return '';
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return '';
+  const dt = at - Date.now();
+  if (dt <= 0) return '';
+  if (dt < 24 * 3600 * 1000) {
+    const min = Math.round(dt / 60000);
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    const dur = h ? (m ? `${h} h ${m} min` : `${h} h`) : `${min} min`;
+    return ` Se reinicia en ${dur}.`;
+  }
+  const d = new Date(at);
+  return ` Se reinicia el ${d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })}.`;
+}
+
+/**
+ * Avisa una sola vez por umbral y por ventana: la clave incluye `resets_at`,
+ * así el aviso se rearma solo cuando empieza una ventana nueva.
+ */
+function checkThresholds(limits) {
+  const settings = store.getSettings();
+  if (!settings.notifyThresholds || !Notification.isSupported()) return;
+  const seen = store.getNotified();
+
+  for (const l of limits) {
+    const crossed = settings.thresholds
+      .filter((t) => l.pct >= t)
+      .sort((a, b) => a - b)
+      .filter((t) => !seen[`${l.kind}:${l.resetsAt}:${t}`]);
+    if (!crossed.length) continue;
+
+    // Se marcan todos los cruzados pero solo se notifica el más alto, para
+    // no lanzar dos avisos seguidos si se pasa del 80 % al 95 % de golpe.
+    for (const t of crossed) store.markNotified(`${l.kind}:${l.resetsAt}:${t}`);
+
+    new Notification({
+      title: `Claude · ${l.label} al ${l.pct} %`,
+      body: `Has cruzado el ${crossed[crossed.length - 1]} % de tu límite.${resetPhrase(l.resetsAt)}`,
+      silent: false,
+    }).show();
   }
 }
 
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
+/* ---------- Arranque ---------- */
+
+if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  app.on('second-instance', () => showPanel());
+
   app.whenReady().then(() => {
     if (IS_MAC && app.dock) app.dock.hide();
 
-    tray = new Tray(IS_MAC ? macTemplateIcon() : winPercentIcon('-'));
+    tray = new Tray(IS_MAC ? macTemplateIcon() : winPercentIcon('-', null));
     tray.setToolTip('Claude Usage — cargando…');
     if (IS_MAC) tray.setTitle(' …');
-    tray.setContextMenu(buildMenu(['Cargando…']));
+    tray.on('click', togglePanel);
+    tray.on('right-click', () => tray.popUpContextMenu(contextMenu()));
 
-    refresh();
-    timer = setInterval(refresh, POLL_MS);
+    createPanel();
+
+    poller = new Poller();
+    poller.on('update', (state) => {
+      const payload = buildPayload();
+      updateTray(payload);
+      push();
+      if (state.status === 'ok') checkThresholds(payload.state.limits);
+    });
+    poller.start();
+
+    // Al despertar el equipo el dato suele estar viejo: se refresca ya.
+    powerMonitor.on('resume', () => poller.refresh());
+    powerMonitor.on('unlock-screen', () => poller.refresh());
+
+    nativeTheme.on('updated', push);
+    try {
+      systemPreferences.on('accent-color-changed', push);
+    } catch {
+      // No disponible en todas las plataformas.
+    }
+
+    ipcMain.on('request-payload', push);
+    ipcMain.on('refresh', () => poller.refresh({ manual: true }));
+    ipcMain.on('set-setting', (_e, { key, value }) => {
+      store.setSetting(key, value);
+      updateTray(buildPayload());
+      push();
+    });
+    ipcMain.on('set-login-item', (_e, enabled) => {
+      app.setLoginItemSettings({ openAtLogin: !!enabled });
+      push();
+    });
+    ipcMain.on('resize', (_e, height) => {
+      if (!panel || panel.isDestroyed()) return;
+      const h = Math.max(160, Math.min(700, Math.round(height)));
+      if (panel.getBounds().height === h) return;
+      panel.setBounds({ width: PANEL_WIDTH, height: h }, false);
+      if (panel.isVisible()) positionPanel();
+    });
   });
 
-  // App de solo-bandeja: no salir cuando no hay ventanas.
+  // App de solo-bandeja: no salir cuando no hay ventanas visibles.
   app.on('window-all-closed', () => {});
 }

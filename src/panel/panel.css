@@ -1,0 +1,354 @@
+/* Panel de la bandeja. Tokens declarados una vez por modo; el cuerpo se
+   escribe contra roles, nunca contra hex sueltos. El acento lo inyecta el
+   proceso principal (--accent) desde el color del sistema. */
+
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --hairline: #e1e0d9;
+  --hover: rgba(11, 11, 11, 0.06);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+  --accent: #d97757;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --hairline: #2c2c2a;
+    --hover: rgba(255, 255, 255, 0.08);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #1a1a19;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --hairline: #2c2c2a;
+  --hover: rgba(255, 255, 255, 0.08);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Un `display` explícito en la hoja de autor gana sobre el `[hidden]` de la
+   hoja del navegador, así que se refuerza aquí. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  background: transparent;
+  font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text-primary);
+  -webkit-user-select: none;
+  user-select: none;
+  overflow: hidden;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* En macOS el fondo lo pone la vibrancia nativa de la ventana. */
+body.vibrant .card {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---------- Cabecera ---------- */
+
+.hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--hairline);
+  -webkit-app-region: drag;
+}
+
+.logo {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+  flex: none;
+}
+
+.hd-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  flex: 1;
+}
+
+.icon-btn {
+  -webkit-app-region: no-drag;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.icon-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.icon-btn:hover {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+.icon-btn[aria-pressed='true'] {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+/* ---------- Cifra principal ---------- */
+
+.hero {
+  padding: 16px 14px 4px;
+}
+
+.hero-num {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  font-size: 50px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  /* Cifras proporcionales: tabular-nums afea un número grande. */
+}
+
+.hero-unit {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.hero-cap {
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+  padding: 3px 9px 3px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* El punto acompaña siempre a una etiqueta: el color nunca va solo. */
+.chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.fc {
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.spark {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 10px;
+  overflow: visible;
+}
+
+/* ---------- Medidores ---------- */
+
+.meters {
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.m-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.m-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pista: un paso más claro del propio tono del relleno, para que el estado
+   se lea a lo largo de toda la barra. */
+.track {
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--fill, var(--accent)) 18%, var(--surface));
+  overflow: hidden;
+}
+
+/* Extremo del dato redondeado, base recta (la recorta el radio de la pista). */
+.fill {
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--fill, var(--accent));
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 0;
+}
+
+.m-sub {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- Aviso ---------- */
+
+.notice {
+  margin: 0 14px 14px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: var(--hover);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* ---------- Ajustes ---------- */
+
+.set {
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 13px;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.set-col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.set-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Control segmentado en vez de <select>: un desplegable nativo quita el
+   foco a la ventana y cerraría el panel al abrirlo. */
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--hover);
+  border-radius: 8px;
+}
+
+.seg button {
+  flex: 1;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seg button:hover {
+  color: var(--text-primary);
+}
+
+.seg button[aria-checked='true'] {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+input[type='checkbox'] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+/* ---------- Pie ---------- */
+
+.ft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.ft-age {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.link {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+
+.link:hover {
+  background: var(--hover);
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:"
+    />
+    <title>Uso de Claude</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <div class="card" id="card">
+      <header class="hd">
+        <svg class="logo" id="logo" viewBox="0 0 16 16" aria-hidden="true"></svg>
+        <span class="hd-title">Uso de Claude</span>
+        <button class="icon-btn" id="gear" title="Ajustes" aria-label="Ajustes">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M8 10.4A2.4 2.4 0 1 0 8 5.6a2.4 2.4 0 0 0 0 4.8Z M13.3 9.6l1.1.9-1.1 1.9-1.4-.4a4.6 4.6 0 0 1-1.2.7L10.4 14H8.2l-.3-1.3a4.6 4.6 0 0 1-1.2-.7l-1.4.4-1.1-1.9 1.1-.9a4.7 4.7 0 0 1 0-1.2l-1.1-.9L5.3 5.6l1.4.4a4.6 4.6 0 0 1 1.2-.7L8.2 4h2.2l.3 1.3c.43.17.83.4 1.2.7l1.4-.4 1.1 1.9-1.1.9a4.7 4.7 0 0 1 0 1.2Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.1"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <!-- Vista principal -->
+      <div id="main">
+        <section class="hero" id="hero">
+          <div class="hero-num"><span id="heroPct">–</span><span class="hero-unit">%</span></div>
+          <div class="hero-cap" id="heroCap">Cargando…</div>
+          <div class="chip" id="chip" hidden>
+            <span class="chip-dot" id="chipDot"></span><span id="chipText"></span>
+          </div>
+          <div class="fc" id="forecast" hidden></div>
+          <svg class="spark" id="spark" hidden></svg>
+        </section>
+
+        <section class="meters" id="meters"></section>
+
+        <div class="notice" id="notice" hidden></div>
+      </div>
+
+      <!-- Ajustes -->
+      <div id="settings" hidden>
+        <section class="set">
+          <div class="set-row set-col">
+            <span class="set-label">Qué se ve en la barra</span>
+            <div class="seg" id="metric" role="radiogroup"></div>
+          </div>
+          <label class="set-row">
+            <span class="set-label">Avisarme al 80 % y 95 %</span>
+            <input type="checkbox" id="notify" />
+          </label>
+          <label class="set-row">
+            <span class="set-label">Iniciar al encender el equipo</span>
+            <input type="checkbox" id="login" />
+          </label>
+        </section>
+      </div>
+
+      <footer class="ft">
+        <span id="age" class="ft-age"></span>
+        <button class="link" id="refresh">Actualizar</button>
+      </footer>
+    </div>
+    <script src="panel.js"></script>
+  </body>
+</html>

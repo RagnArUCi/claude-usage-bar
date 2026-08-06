@@ -2,10 +2,10 @@
 
 Muestra en tiempo real el porcentaje de uso de tu plan de Claude:
 
-- **macOS** — el logo de Claude con el porcentaje al lado, en la barra de menú superior (junto al reloj/Wi-Fi).
-- **Windows** — un icono con el número dentro (estilo indicador de batería) en la bandeja del sistema, junto al reloj.
+- **macOS** — el logo de Claude con el porcentaje al lado, en la barra de menú superior.
+- **Windows** — un icono con el número dentro (estilo indicador de batería) en la bandeja del sistema.
 
-El porcentaje mostrado es el de la **sesión actual (ventana de 5 horas)**. Haciendo clic en el icono ves también el uso semanal, el semanal de Opus y cuándo se reinicia cada límite.
+Al hacer clic se abre un panel con un medidor por cada límite, la tendencia de la sesión y una proyección de cuándo se te agota al ritmo actual.
 
 ## Descarga
 
@@ -25,26 +25,43 @@ Los instaladores no están firmados con certificado de pago, así que el sistema
   `xattr -cr "/Applications/Claude Usage.app"` y ábrela de nuevo (o clic derecho → Abrir).
 - **Windows**: en el aviso de SmartScreen pulsa **Más información → Ejecutar de todas formas**.
 
+## Qué muestra el panel
+
+- **Cifra principal** — el límite más restrictivo (o el que elijas en ajustes).
+- **Proyección** — "a este ritmo se agota sobre las 18:40", calculada por regresión sobre la última hora de muestras. Si el reinicio llega antes, lo dice.
+- **Tendencia** — la curva de consumo de la ventana actual.
+- **Un medidor por límite** — sesión de 5 h, semana, y los que la API vaya añadiendo (Opus, Sonnet…). La app lee el array `limits[]` de la API, así que un límite nuevo aparece solo, sin actualizar la app.
+- **Avisos** al cruzar el 80 % y el 95 %, una sola vez por ventana.
+
+### Colores
+
+El relleno de los medidores usa el **color de acento del sistema** y la pista un paso más claro del mismo tono. Como el acento lo eliges tú y puede ser cualquier color (un amarillo claro sobre fondo claro sería ilegible), la app mide el contraste real y ajusta la luminosidad hasta alcanzar 3:1, conservando el matiz.
+
+Cuando la API marca severidad, el medidor pasa a los colores de estado (ámbar / coral / rojo) y aparece una etiqueta de texto: el color nunca es el único portador del significado.
+
 ## Requisitos
 
-Tener **Claude Code** instalado y con sesión iniciada en la misma máquina. La app reutiliza (en modo solo lectura) la sesión que Claude Code ya guarda:
+Tener **Claude Code** instalado y con sesión iniciada en la misma máquina. La app reutiliza la sesión que Claude Code ya guarda:
 
 - macOS: Llavero (`Claude Code-credentials`) o `~/.claude/.credentials.json`
 - Windows: `%USERPROFILE%\.claude\.credentials.json`
 
-Con ese token consulta el endpoint oficial `https://api.anthropic.com/api/oauth/usage` cada 60 segundos.
+Con ese token consulta el endpoint oficial `https://api.anthropic.com/api/oauth/usage` y renueva el token solo cuando caduca.
+
+## Cómo evita el error 429
+
+El problema no es el tipo de credencial, sino el ritmo de consultas: el mismo token lo usa también Claude Code, las peticiones se suman y el endpoint acaba limitando. La app aplica cuatro medidas:
+
+1. **Ritmo adaptativo.** El porcentaje solo se mueve cuando de verdad usas Claude, así que la app vigila la actividad local de Claude Code (`~/.claude/projects`) y solo entonces consulta cada 90 s. En reposo, cada 5 minutos; con el panel abierto, cada 60 s. Pasa de ~1.440 peticiones al día a ~290.
+2. **Una sola petición en vuelo.** Nunca se solapan.
+3. **Espera exponencial con jitter**, respetando la cabecera `Retry-After` cuando llega.
+4. **Caché persistente.** Un fallo transitorio nunca borra el último dato bueno: el panel lo sigue mostrando y marca "no reciente" en lugar de dar error.
+
+Además se refresca al despertar el equipo, al desbloquear la pantalla y justo después de que se reinicie una ventana.
 
 ## Privacidad
 
-El token **nunca** sale de tu máquina ni se registra en logs: solo se envía a `api.anthropic.com`, que es su destino legítimo. La app no tiene analítica ni servidores propios.
-
-## Estados del icono
-
-| Icono | Significado |
-|---|---|
-| `42%` | Porcentaje usado de la sesión de 5 h |
-| Rojo (Windows) / — | Uso ≥ 90 % |
-| `–` / `!` | Sin credenciales o sesión expirada → abre Claude Code |
+El token **nunca** sale de tu máquina ni se registra en logs: solo se envía a `api.anthropic.com`, que es su destino legítimo. La app no tiene analítica ni servidores propios. El historial de uso se guarda solo en tu equipo (`history.json` en el directorio de datos de la app).
 
 ## Desarrollo
 
@@ -59,17 +76,16 @@ npm run dist          # compila el instalador de tu plataforma
 ## Publicar una versión
 
 ```bash
-npm version patch     # o minor/major
-git push && git push --tags
+npm version minor && git push && git push --tags
 ```
 
-GitHub Actions compila el `.dmg` (macOS) y el `.exe` (Windows) y los adjunta al Release automáticamente.
+GitHub Actions compila el `.dmg` y el `.exe` y los adjunta al Release (queda en borrador; se publica con `gh release edit vX.Y.Z --draft=false`).
 
 ## Hoja de ruta
 
-- [ ] Interfaz con panel al hacer clic (gráficas, historial, selección de métrica)
-- [ ] Elegir qué métrica se muestra en la barra (sesión / semana / Opus)
-- [ ] Notificaciones al llegar al 80 % / 95 %
+- [ ] Ventana de historial con varios días
+- [ ] Atajo de teclado global para abrir el panel
+- [ ] Soporte para créditos extra (`extra_usage`) cuando estén activos
 
 ## Licencia
 
