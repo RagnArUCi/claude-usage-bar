@@ -1,6 +1,6 @@
 {
   "name": "claude-usage-bar",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Muestra el porcentaje de uso de tu plan de Claude en la barra de menú (macOS) y en la bandeja del sistema (Windows).",
   "main": "main.js",
   "author": "RagnArTheVikings",
