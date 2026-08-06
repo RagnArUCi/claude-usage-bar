@@ -16,6 +16,7 @@ const {
   systemPreferences,
   powerMonitor,
   Notification,
+  shell,
 } = require('electron');
 
 const { Poller } = require('./src/poller');
@@ -23,15 +24,19 @@ const store = require('./src/store');
 const { palette } = require('./src/color');
 const { forecast, sparkline } = require('./src/forecast');
 const { macTemplateIcon, winPercentIcon } = require('./src/trayIcon');
-const { ensureAutoLaunch, setAutoLaunch } = require('./src/autoLaunch');
+const { ensureAutoLaunch, setAutoLaunch, isEnabled } = require('./src/autoLaunch');
+const { checkForUpdate } = require('./src/updateCheck');
 
 const IS_MAC = process.platform === 'darwin';
 const PANEL_WIDTH = 300;
 const PANEL_MARGIN = 8;
+const UPDATE_POLL_MS = 6 * 60 * 60 * 1000; // cada 6 h
 
 let tray = null;
 let panel = null;
 let poller = null;
+let updateInfo = null; // { latest, url } cuando hay una versión más nueva
+let notifiedVersion = null;
 
 /* ---------- Datos para la interfaz ---------- */
 
@@ -63,7 +68,7 @@ function buildPayload() {
       spark: primary ? sparkline(state.history, primary.kind) : [],
     },
     settings,
-    loginItem: app.getLoginItemSettings().openAtLogin,
+    loginItem: isEnabled(app),
     // En desarrollo se registraría electron en vez de la app instalada.
     canAutoLaunch: app.isPackaged,
     primaryKind: primary ? primary.kind : null,
@@ -103,9 +108,20 @@ function updateTray(payload) {
 }
 
 function contextMenu() {
-  return Menu.buildFromTemplate([
+  const items = [];
+
+  if (updateInfo) {
+    items.push({
+      label: `⬆ Actualización disponible (v${updateInfo.latest})`,
+      click: () => shell.openExternal(updateInfo.url),
+    });
+    items.push({ type: 'separator' });
+  }
+
+  items.push(
     { label: 'Abrir panel', click: () => showPanel() },
     { label: 'Actualizar ahora', click: () => poller.refresh({ manual: true }) },
+    { label: 'Buscar actualizaciones', click: () => checkUpdates(true) },
     { type: 'separator' },
     {
       // En dev registraría electron.exe en vez de la app instalada.
@@ -114,7 +130,7 @@ function contextMenu() {
         : 'Iniciar al encender el equipo (solo app instalada)',
       type: 'checkbox',
       enabled: app.isPackaged,
-      checked: app.getLoginItemSettings().openAtLogin,
+      checked: isEnabled(app),
       click: (item) => {
         setAutoLaunch(app, item.checked);
         push();
@@ -123,7 +139,48 @@ function contextMenu() {
     { type: 'separator' },
     { label: `Claude Usage v${app.getVersion()}`, enabled: false },
     { label: 'Salir', role: 'quit' },
-  ]);
+  );
+
+  return Menu.buildFromTemplate(items);
+}
+
+// Comprueba si hay una versión nueva. `manual` = lo pidió el usuario desde el
+// menú (avisa aunque ya esté al día). Automático: solo avisa una vez por
+// versión para no repetir la notificación cada 6 h.
+async function checkUpdates(manual = false) {
+  const r = await checkForUpdate(app.getVersion());
+  if (!r || r.error) {
+    if (manual && Notification.isSupported()) {
+      new Notification({
+        title: 'Claude Usage',
+        body: 'No pude comprobar actualizaciones ahora mismo.',
+      }).show();
+    }
+    return;
+  }
+
+  if (!r.updateAvailable) {
+    updateInfo = null;
+    if (manual && Notification.isSupported()) {
+      new Notification({
+        title: 'Claude Usage',
+        body: `Ya tienes la última versión (v${app.getVersion()}).`,
+      }).show();
+    }
+    return;
+  }
+
+  updateInfo = { latest: r.latest, url: r.url };
+
+  if ((manual || notifiedVersion !== r.latest) && Notification.isSupported()) {
+    notifiedVersion = r.latest;
+    const n = new Notification({
+      title: 'Claude Usage — actualización disponible',
+      body: `La versión ${r.latest} ya está lista. Clic para descargarla.`,
+    });
+    n.on('click', () => shell.openExternal(updateInfo.url));
+    n.show();
+  }
 }
 
 /* ---------- Panel ---------- */
@@ -280,6 +337,10 @@ if (!app.requestSingleInstanceLock()) {
       if (state.status === 'ok') checkThresholds(payload.state.limits);
     });
     poller.start();
+
+    // Comprobación de actualizaciones: al arrancar y cada 6 h.
+    checkUpdates();
+    setInterval(() => checkUpdates(), UPDATE_POLL_MS);
 
     // Al despertar el equipo el dato suele estar viejo: se refresca ya.
     powerMonitor.on('resume', () => poller.refresh());

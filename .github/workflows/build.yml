@@ -12,7 +12,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -45,4 +45,5 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.exe
+            dist/*.AppImage
           if-no-files-found: error

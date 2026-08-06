@@ -3,13 +3,33 @@
 Muestra en tiempo real el porcentaje de uso de tu plan de Claude:
 
 - **macOS** — el logo de Claude con el porcentaje al lado, en la barra de menú superior.
-- **Windows** — un icono con el número dentro (estilo indicador de batería) en la bandeja del sistema.
+- **Windows / Linux** — un icono con el número dentro (estilo indicador de batería) en la bandeja del sistema.
 
 Al hacer clic se abre un panel con un medidor por cada límite, la tendencia de la sesión y una proyección de cuándo se te agota al ritmo actual.
 
-La app instalada se configura sola para **iniciarse al encender el equipo** (Windows y macOS) la primera vez que la abres. Se puede desactivar cuando quieras desde el menú del icono → "Iniciar al encender el equipo".
+La app instalada se configura sola para **iniciarse al encender el equipo** (Windows, macOS y Linux) la primera vez que la abres. Se puede desactivar cuando quieras desde el menú del icono → "Iniciar al encender el equipo".
 
-## Descarga
+También **avisa cuando hay una versión nueva**: comprueba GitHub al arrancar y cada 6 h, muestra una notificación y añade un acceso en el menú para abrir la descarga. Nunca instala nada por su cuenta.
+
+## Instalación
+
+### Con un comando (recomendado)
+
+Descarga e instala el último release automáticamente, sin entrar a la web:
+
+**macOS / Linux**
+```bash
+curl -fsSL https://raw.githubusercontent.com/RagnArUCi/claude-usage-bar/main/scripts/install.sh | sh
+```
+
+**Windows** (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/RagnArUCi/claude-usage-bar/main/scripts/install.ps1 | iex
+```
+
+El script detecta tu sistema, baja el instalador correcto del último Release, lo instala y abre la app.
+
+### Descarga manual
 
 Ve a [Releases](../../releases) y descarga:
 
@@ -18,6 +38,12 @@ Ve a [Releases](../../releases) y descarga:
 | macOS (Apple Silicon) | `Claude-Usage-x.x.x-arm64.dmg` |
 | macOS (Intel) | `Claude-Usage-x.x.x.dmg` |
 | Windows | `Claude-Usage-Setup-x.x.x.exe` |
+| Linux | `Claude-Usage-x.x.x.AppImage` |
+
+En Linux, tras descargar dale permiso de ejecución y ábrelo:
+```bash
+chmod +x Claude-Usage-*.AppImage && ./Claude-Usage-*.AppImage
+```
 
 ### Nota al abrir por primera vez
 
@@ -29,9 +55,11 @@ Los instaladores llevan firma ad-hoc pero no están notarizados (eso exige una c
 xattr -cr "/Applications/Claude Usage.app"
 ```
 
-Eso quita la marca de cuarentena que pone el navegador al descargar. Como alternativa sin Terminal: ábrela, y cuando salte el aviso ve a **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir igualmente**. En macOS Sequoia (15) y posteriores el antiguo truco de clic derecho → Abrir ya no funciona.
+Eso quita la marca de cuarentena que pone el navegador al descargar (el instalador por comando ya lo hace por ti). Como alternativa sin Terminal: ábrela, y cuando salte el aviso ve a **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir igualmente**. En macOS Sequoia (15) y posteriores el antiguo truco de clic derecho → Abrir ya no funciona.
 
 **Windows** — en el aviso de SmartScreen pulsa **Más información → Ejecutar de todas formas**.
+
+**Linux** — si el icono no aparece en la bandeja, mira la nota de entornos de escritorio más abajo.
 
 ## Qué muestra el panel
 
@@ -53,6 +81,7 @@ Tener **Claude Code** instalado y con sesión iniciada en la misma máquina. La 
 
 - macOS: Llavero (`Claude Code-credentials`) o `~/.claude/.credentials.json`
 - Windows: `%USERPROFILE%\.claude\.credentials.json`
+- Linux: `~/.claude/.credentials.json`
 
 Con ese token consulta el endpoint oficial `https://api.anthropic.com/api/oauth/usage` y renueva el token solo cuando caduca.
 
@@ -67,9 +96,18 @@ El problema no es el tipo de credencial, sino el ritmo de consultas: el mismo to
 
 Además se refresca al despertar el equipo, al desbloquear la pantalla y justo después de que se reinicie una ventana.
 
+### Linux: icono en la bandeja
+
+El soporte de bandeja depende del entorno de escritorio:
+
+- **KDE, XFCE, Cinnamon, MATE, Budgie**: funciona sin nada extra.
+- **GNOME**: necesita la extensión [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) para mostrar iconos de bandeja.
+
+En Linux el porcentaje va dentro del icono (como en Windows); GNOME no permite texto suelto en la barra.
+
 ## Privacidad
 
-El token **nunca** sale de tu máquina ni se registra en logs: solo se envía a `api.anthropic.com`, que es su destino legítimo. La app no tiene analítica ni servidores propios. El historial de uso se guarda solo en tu equipo (`history.json` en el directorio de datos de la app).
+El token **nunca** sale de tu máquina ni se registra en logs: solo se envía a `api.anthropic.com`, que es su destino legítimo. La comprobación de actualizaciones solo consulta la API pública de releases de GitHub (no envía ningún dato tuyo). La app no tiene analítica ni servidores propios. El historial de uso se guarda solo en tu equipo (`history.json` en el directorio de datos de la app).
 
 ## Desarrollo
 
@@ -77,6 +115,7 @@ El token **nunca** sale de tu máquina ni se registra en logs: solo se envía a 
 npm install
 npm run gen-icon      # genera build/icon.png (el icono se dibuja por código)
 npm run check-usage   # prueba la consulta a la API sin abrir la app
+npm test              # tests unitarios (autostart, comparación de versiones…)
 npm start             # ejecuta la app
 npm run dist          # compila el instalador de tu plataforma
 ```
@@ -87,7 +126,7 @@ npm run dist          # compila el instalador de tu plataforma
 npm version minor && git push && git push --tags
 ```
 
-GitHub Actions compila el `.dmg` y el `.exe` y los adjunta al Release (queda en borrador; se publica con `gh release edit vX.Y.Z --draft=false`).
+GitHub Actions compila el `.dmg` (macOS), el `.exe` (Windows) y el `.AppImage` (Linux) y los adjunta al Release (queda en borrador; se publica con `gh release edit vX.Y.Z --draft=false`).
 
 ## Hoja de ruta
 
