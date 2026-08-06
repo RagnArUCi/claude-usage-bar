@@ -21,11 +21,17 @@ Ve a [Releases](../../releases) y descarga:
 
 ### Nota al abrir por primera vez
 
-Los instaladores no están firmados con certificado de pago, así que el sistema mostrará una advertencia:
+Los instaladores llevan firma ad-hoc pero no están notarizados (eso exige una cuenta de desarrollador de Apple de pago), así que el sistema mostrará una advertencia la primera vez.
 
-- **macOS**: si dice que la app está dañada o no se puede verificar, ejecuta en Terminal:
-  `xattr -cr "/Applications/Claude Usage.app"` y ábrela de nuevo (o clic derecho → Abrir).
-- **Windows**: en el aviso de SmartScreen pulsa **Más información → Ejecutar de todas formas**.
+**macOS** — arrastra la app a Aplicaciones y ejecuta en Terminal:
+
+```bash
+xattr -cr "/Applications/Claude Usage.app"
+```
+
+Eso quita la marca de cuarentena que pone el navegador al descargar. Como alternativa sin Terminal: ábrela, y cuando salte el aviso ve a **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir igualmente**. En macOS Sequoia (15) y posteriores el antiguo truco de clic derecho → Abrir ya no funciona.
+
+**Windows** — en el aviso de SmartScreen pulsa **Más información → Ejecutar de todas formas**.
 
 ## Qué muestra el panel
 
