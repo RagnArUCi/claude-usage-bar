@@ -1,0 +1,3 @@
+# Los scripts de shell deben conservar finales de línea LF siempre,
+# aunque se editen en Windows: con CRLF fallan al ejecutarse en macOS/Linux.
+*.sh text eol=lf
