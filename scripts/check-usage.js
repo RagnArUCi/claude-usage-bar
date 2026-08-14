@@ -6,12 +6,11 @@ const { fetchUsage } = require('../src/usage');
 
 fetchUsage().then((u) => {
   if (u.error) {
-    console.error(`Error: ${u.error}`);
+    console.error(`Error: ${u.error}${u.retryable ? ' (reintentable)' : ''}`);
     process.exit(1);
   }
-  const show = (label, s) =>
-    console.log(`${label}: ${s ? `${s.pct}% (se reinicia ${s.resetsAt})` : 'n/d'}`);
-  show('Sesión (5h)', u.session);
-  show('Semana', u.weekly);
-  show('Semana Opus', u.opus);
+  for (const l of u.limits) {
+    const reset = l.resetsAt ? ` · se reinicia ${new Date(l.resetsAt).toLocaleString()}` : '';
+    console.log(`${l.label}: ${l.pct} % [${l.severity}]${reset}`);
+  }
 });

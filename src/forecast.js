@@ -5,9 +5,21 @@
 'use strict';
 
 const MIN_SAMPLES = 3;
-const MIN_SPAN_MS = 8 * 60 * 1000;
-const RATE_WINDOW_MS = 60 * 60 * 1000; // se mide el ritmo de la última hora
-const MIN_RATE = 0.5; // %/h por debajo de esto se considera "sin consumo"
+
+// Sobre qué tramo se mide el ritmo, según la duración de la ventana.
+//
+// Para la sesión de 5 h la última hora describe bien lo que estás haciendo.
+// Para la ventana semanal no: extrapolar un ritmo horario a 7 días asume que
+// trabajas sin dormir y predice el agotamiento para mañana. Ahí el ritmo se
+// mide sobre dos días, que ya incluyen noches y pausas.
+const PROFILES = {
+  session: { windowMs: 60 * 60 * 1000, minSpanMs: 8 * 60 * 1000, minRate: 0.5 },
+  weekly: { windowMs: 48 * 3600 * 1000, minSpanMs: 6 * 3600 * 1000, minRate: 0.05 },
+};
+
+function profileFor(limit) {
+  return PROFILES[limit.group] || PROFILES.weekly;
+}
 
 /**
  * Muestras de la ventana vigente: desde la última vez que el porcentaje
@@ -28,12 +40,12 @@ function windowSamples(history, kind) {
 }
 
 /** Pendiente por mínimos cuadrados, en puntos porcentuales por hora. */
-function ratePerHour(points) {
-  const cutoff = Date.now() - RATE_WINDOW_MS;
+function ratePerHour(points, profile = PROFILES.session) {
+  const cutoff = Date.now() - profile.windowMs;
   const pts = points.filter((p) => p.t >= cutoff);
   if (pts.length < MIN_SAMPLES) return null;
   const span = pts[pts.length - 1].t - pts[0].t;
-  if (span < MIN_SPAN_MS) return null;
+  if (span < profile.minSpanMs) return null;
 
   const hours = pts.map((p) => (p.t - pts[0].t) / 3600000);
   const ys = pts.map((p) => p.pct);
@@ -55,10 +67,11 @@ function ratePerHour(points) {
  *  el límite se reinicia antes de agotarse al ritmo actual.
  */
 function forecast(limit, history) {
+  const profile = profileFor(limit);
   const pts = windowSamples(history, limit.kind);
-  const rate = ratePerHour(pts);
-  if (rate === null || rate < MIN_RATE || limit.pct >= 100) {
-    return { rate, etaAt: null, safeUntilReset: rate !== null && rate < MIN_RATE };
+  const rate = ratePerHour(pts, profile);
+  if (rate === null || rate < profile.minRate || limit.pct >= 100) {
+    return { rate, etaAt: null, safeUntilReset: rate !== null && rate < profile.minRate };
   }
   const hoursLeft = (100 - limit.pct) / rate;
   const etaAt = Date.now() + hoursLeft * 3600000;
