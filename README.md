@@ -3,12 +3,10 @@
 Muestra en tiempo real el porcentaje de uso de tu plan de Claude:
 
 - **macOS** — el logo de Claude con el porcentaje al lado, en la barra de menú superior.
-
-  <img width="2000" height="1050" alt="image-1786681851749" src="https://github.com/user-attachments/assets/f743c7cf-1b5c-4958-8990-d8c03be27981" />
-
 - **Windows / Linux** — un icono con el número dentro (estilo indicador de batería) en la bandeja del sistema.
 
 Al hacer clic se abre un panel con un medidor por cada límite, la tendencia de la sesión y una proyección de cuándo se te agota al ritmo actual.
+<img width="2000" height="1050" alt="image-1786681851749" src="https://github.com/user-attachments/assets/f743c7cf-1b5c-4958-8990-d8c03be27981" />
 
 La app instalada se configura sola para **iniciarse al encender el equipo** (Windows, macOS y Linux) la primera vez que la abres. Se puede desactivar cuando quieras desde el menú del icono → "Iniciar al encender el equipo".
 
