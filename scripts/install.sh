@@ -12,12 +12,19 @@ die() { log "Error: $*"; exit 1; }
 
 command -v curl >/dev/null 2>&1 || die "curl no está instalado."
 
-# Primer browser_download_url del release que casa con el patrón dado.
+# Primer browser_download_url del release que casa con $1 y, si se pasa $2,
+# que NO casa con $2.
+#
+# La exclusión no es un adorno: para Mac Intel el patrón por sufijo también
+# casaba con el .dmg de Apple Silicon (…-arm64.dmg acaba en "4.dmg", que
+# encaja en [0-9]\.dmg$), así que un Intel podía acabar instalando la build
+# equivocada según el orden que devolviera la API.
 asset_url() {
   curl -fsSL "$API" \
     | grep 'browser_download_url' \
     | grep -oE 'https://[^"]+' \
     | grep -E "$1" \
+    | { if [ -n "${2:-}" ]; then grep -vE "$2"; else cat; fi; } \
     | head -n1
 }
 
@@ -27,10 +34,9 @@ ARCH="$(uname -m)"
 case "$OS" in
   Darwin)
     case "$ARCH" in
-      arm64) pat='arm64\.dmg$' ;;
-      *)     pat='[0-9]\.dmg$' ;;
+      arm64) url="$(asset_url 'arm64\.dmg$')" ;;
+      *)     url="$(asset_url '\.dmg$' 'arm64')" ;;
     esac
-    url="$(asset_url "$pat")"
     [ -n "$url" ] || die "no encontré un .dmg para $ARCH en el último release."
 
     tmp="$(mktemp -d)"
