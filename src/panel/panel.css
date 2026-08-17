@@ -59,17 +59,16 @@ body {
   overflow: hidden;
 }
 
+/* La tarjeta pinta SIEMPRE su propio fondo opaco. Antes en macOS se dejaba
+   transparente para que se viera la vibrancia nativa de la ventana, pero
+   `transparent: true` y `vibrancy` entran en conflicto: la vibrancia no
+   llegaba a pintar y el texto quedaba sobre el escritorio, ilegible si el
+   fondo era claro. La legibilidad no puede depender de lo que haya detrás. */
 .card {
   background: var(--surface);
   border-radius: 12px;
   box-shadow: var(--shadow);
   overflow: hidden;
-}
-
-/* En macOS el fondo lo pone la vibrancia nativa de la ventana. */
-body.vibrant .card {
-  background: transparent;
-  box-shadow: none;
 }
 
 /* ---------- Cabecera ---------- */

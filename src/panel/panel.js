@@ -171,7 +171,6 @@ function render(payload) {
   const { state, palette, settings, loginItem, primaryKind } = payload;
   const accent = palette.accent;
   document.documentElement.style.setProperty('--accent', accent);
-  document.body.classList.toggle('vibrant', !!payload.vibrant);
 
   const limits = state.limits || [];
   const primary = limits.find((l) => l.kind === primaryKind) || limits[0] || null;

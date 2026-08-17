@@ -76,7 +76,6 @@ function buildPayload() {
       accent: nativeTheme.shouldUseDarkColors ? pal.accentDark : pal.accentLight,
       severity: pal.severity,
     },
-    vibrant: IS_MAC,
   };
 }
 
@@ -199,9 +198,9 @@ function createPanel() {
     fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    ...(IS_MAC
-      ? { vibrancy: 'popover', visualEffectState: 'active', roundedCorners: true }
-      : {}),
+    // Sin vibrancia: combinada con `transparent: true` no llega a pintar y la
+    // tarjeta se queda viendo el escritorio. La tarjeta pone su propio fondo.
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, 'src', 'preload.js'),
       contextIsolation: true,
