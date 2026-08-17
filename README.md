@@ -65,7 +65,7 @@ Eso quita la marca de cuarentena que pone el navegador al descargar (el instalad
 ## Qué muestra el panel
 
 - **Cifra principal** — el límite más restrictivo (o el que elijas en ajustes).
-- **Proyección** — "a este ritmo se agota sobre las 18:40", calculada por regresión sobre la última hora de muestras. Si el reinicio llega antes, lo dice.
+- **Proyección** — "a este ritmo se agota sobre las 18:40", por regresión sobre tu historial. Si el reinicio llega antes, lo dice. El tramo que se mide depende de la ventana: 1 hora para la sesión de 5 h, 48 horas para la semanal — extrapolar un ritmo horario a 7 días asumiría que trabajas sin dormir.
 - **Tendencia** — la curva de consumo de la ventana actual.
 - **Un medidor por límite** — sesión de 5 h, semana, y los que la API vaya añadiendo (Opus, Sonnet…). La app lee el array `limits[]` de la API, así que un límite nuevo aparece solo, sin actualizar la app.
 - **Avisos** al cruzar el 80 % y el 95 %, una sola vez por ventana.
