@@ -9,6 +9,13 @@ permissions:
   contents: write
 
 jobs:
+  # Los tres sistemas solo compilan y suben artefactos. Nunca publican.
+  #
+  # Antes cada job corría `electron-builder --publish always`, y los tres
+  # intentaban crear el Release a la vez ("creating GitHub release reason=
+  # release doesn't exist"): el último en escribir se llevaba por delante las
+  # subidas de los otros, así que el Release acababa con solo un instalador.
+  # Publicar es responsabilidad de un único job, más abajo.
   build:
     strategy:
       matrix:
@@ -24,20 +31,13 @@ jobs:
 
       - run: npm ci
 
+      - run: npm test
+
       - run: npm run gen-icon
 
-      # En tags publica los instaladores en el Release de GitHub;
-      # en ejecuciones manuales solo compila.
       - name: Build
         shell: bash
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            npx electron-builder --publish always
-          else
-            npx electron-builder --publish never
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --publish never
 
       - uses: actions/upload-artifact@v4
         with:
@@ -47,3 +47,39 @@ jobs:
             dist/*.exe
             dist/*.AppImage
           if-no-files-found: error
+
+  # Un solo job crea el Release y adjunta todo, cuando ya están los tres.
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Comprobar que están los tres sistemas
+        run: |
+          ls -la artifacts
+          for pat in '*-arm64.dmg' '*.exe' '*.AppImage'; do
+            if ! ls artifacts/$pat >/dev/null 2>&1; then
+              echo "Falta un instalador: $pat"
+              exit 1
+            fi
+          done
+
+      # Queda en borrador a propósito: las notas se escriben a mano antes de
+      # publicarlo con `gh release edit <tag> --draft=false`.
+      - name: Publicar en el Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" artifacts/* \
+              --repo "$GITHUB_REPOSITORY" --draft --title "$TAG" \
+              --notes "Instaladores para macOS, Windows y Linux."
+          fi
