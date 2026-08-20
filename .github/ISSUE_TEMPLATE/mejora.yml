@@ -1,0 +1,24 @@
+name: Proponer una mejora
+description: Una idea para la app
+labels: [mejora]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Esta app cubre **solo Claude**, a propósito, para seguir siendo simple.
+        Si tu idea es añadir otro proveedor (Gemini, Kiro, Cursor…), encaja
+        mejor en [ai-usage-bar](https://github.com/RagnArUCi/ai-usage-bar),
+        que tiene una arquitectura de proveedores como módulos.
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qué problema resuelve
+      description: >
+        Antes del cómo, el porqué. La app es deliberadamente pequeña, así que
+        el criterio para añadir algo es que resuelva un problema concreto.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Cómo lo imaginas

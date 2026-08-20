@@ -135,6 +135,15 @@ GitHub Actions compila el `.dmg` (macOS), el `.exe` (Windows) y el `.AppImage` (
 - [ ] Atajo de teclado global para abrir el panel
 - [ ] Soporte para créditos extra (`extra_usage`) cuando estén activos
 
+## Documentación
+
+| | |
+|---|---|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Cómo trabajar en el proyecto y qué se pide en un PR |
+| [AGENTS.md](AGENTS.md) | Para agentes de IA: arquitectura, invariantes y trampas ya pisadas |
+| [SECURITY.md](SECURITY.md) | Qué hace la app con tus credenciales, y qué no |
+| [CHANGELOG.md](CHANGELOG.md) | Registro de cambios |
+
 ## Licencia
 
-MIT
+MIT — ver [LICENSE](LICENSE).

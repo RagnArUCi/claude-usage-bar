@@ -1,0 +1,47 @@
+name: Reportar un fallo
+description: Algo no funciona como debería
+labels: [fallo]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Si el problema expone tokens o credenciales, **no lo reportes aquí**:
+        mira [SECURITY.md](../blob/main/SECURITY.md).
+  - type: textarea
+    id: que-pasa
+    attributes:
+      label: Qué pasa
+      description: Y qué esperabas que pasara.
+    validations:
+      required: true
+  - type: textarea
+    id: check-usage
+    attributes:
+      label: Salida de `npm run check-usage`
+      description: >
+        Si has clonado el repo. No expone tokens, solo porcentajes y errores.
+        Si usas la app instalada, deja este campo vacío.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Versión de la app
+      placeholder: "1.2.0 — sale en el menú del icono"
+    validations:
+      required: true
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: captura
+    attributes:
+      label: Captura
+      description: Si es un fallo visual del panel, ayuda mucho.
