@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 build/icon.png
 .DS_Store
